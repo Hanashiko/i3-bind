@@ -154,9 +154,8 @@ func addBinding(cmd *cobra.Command, args []string) {
 	bindings := parseBindings(lines)
 	for _, binding := range bindings {
 		if strings.EqualFold(binding.Key, key){
-		// if binding.Key == key {
 			errorColor.Printf("Error: Keybinding %s already exists\n", key)
-			fmt.Printf("Current bindig: %s -> %блін, s\n", keyColor.Sprint(binding.Key), actionColor.Sprint(binding.Action))
+			fmt.Printf("Current bindig: %s -> %s\n", keyColor.Sprint(binding.Key), actionColor.Sprint(binding.Action))
 			fmt.Println("Use 'i3-bind remove' first or modify the config manually")
 			os.Exit(1)
 		}
@@ -199,7 +198,6 @@ func removeBinding(cmd *cobra.Command, args []string) {
 
 	for _, binding := range bindings {
 		if strings.EqualFold(binding.Key, key) {
-		// if binding.Key == key {
 			found = true
 			removedBinding = binding
 			break
@@ -213,7 +211,6 @@ func removeBinding(cmd *cobra.Command, args []string) {
 
 	newLines := make([]string, 0, len(lines)-1)
 	bindRegex := regexp.MustCompile(`(?i)^\s*bindsym\s+` + regexp.QuoteMeta(key) + `\s+`)
-	// bindRegex := regexp.MustCompile(`^\s*bindsym\s+` + regexp.QuoteMeta(key) + `\s+`)
 
 	for _, line := range lines {
 		if !bindRegex.MatchString(line) {
