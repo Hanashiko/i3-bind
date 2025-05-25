@@ -369,7 +369,12 @@ func commentBinding(cmd *cobra.Command, args []string) {
 			if i > 0 {
 				prevLine := strings.TrimSpace(lines[i-1])
 				if strings.HasPrefix(prevLine, "#") {
-					lines[i-1] = "# " + comment
+					trimmed := strings.TrimSpace(strings.TrimPrefix(prevLine, "#"))
+					if strings.HasSuffix(trimmed, ":") {
+						lines = insertLine(lines, i, "# " + comment)
+					} else {
+						lines[i-1] = "# " + comment
+					}
 				} else {
 					lines = insertLine(lines, i, "# " + comment)
 				}
