@@ -135,10 +135,22 @@ func parseBindings(lines []string) []Binding {
 	for i, line := range lines {
 		matches := bindRegex.FindStringSubmatch(line)
 		if matches != nil {
+			comment := strings.TrimSpace(matches[3])
+
+			if comment == "" && i > 0 {
+				previousLine := strings.TrimSpace(lines[i-1])
+				if strings.HasPrefix(previousLine, "#") {
+					trimmed := strings.TrimSpace(strings.TrimPrefix(previousLine, "#"))
+					
+					if !strings.HasSuffix(trimmed, ":") {
+						comment = trimmed
+					}
+				}
+			}
 			binding := Binding{
 				Key: matches[1],
 				Action: strings.TrimSpace(matches[2]),
-				Comment: strings.TrimSpace(matches[3]),
+				Comment: comment,
 				Line: i+1,
 				Raw: line,
 			}
