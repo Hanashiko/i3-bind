@@ -9,7 +9,7 @@ import (
 	// "os/exec"
 	"path/filepath"
 	"regexp"
-	// "sort"
+	"sort"
 	// "strconv"
 	"strings"
 	// "syscall"
@@ -85,8 +85,15 @@ func main() {
 		Run: removeBinding,
 	}
 
+	var listCmd = &cobra.Command{
+		Use: "list",
+		Short: "List all keybindings",
+		Long: "List all keybinding in the i3 config file with syntax highlighting",
+		Run: listBindings,
+	}
 
-	rootCmd.AddCommand(addCmd, removeCmd)
+
+	rootCmd.AddCommand(addCmd, removeCmd, listCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -224,4 +231,32 @@ func removeBinding(cmd *cobra.Command, args []string) {
 	}
 
 	successColor.Printf("✓ Removed keybinding: %s -> %s\n", keyColor.Sprint(removedBinding.Key), actionColor.Sprint(removedBinding.Action))
+}
+
+func listBindings(cmd *cobra.Command, args []string) {
+	lines, err := readConfig()
+	if err != nil {
+		errorColor.Printf("Error: %v\n",err)
+		os.Exit(1)
+	}
+
+	bindings := parseBindings(lines)
+	if len(bindings) == 0 {
+		fmt.Println("No keybindings found in config file")
+		return
+	}
+
+	sort.Slice(bindings, func(i, j int) bool {
+		return bindings[i].Key < bindings[j].Key
+	})
+
+	fmt.Printf("Found %d keybindings in %s:\n\n", len(bindings), configPath)
+
+	for _, binding := range bindings {
+		fmt.Printf("  %s -> %s", keyColor.Sprint(binding.Key),actionColor.Sprint(binding.Action))
+		if binding.Comment != "" {
+			fmt.Printf(" %s", commentColor.Sprintf("# %s",binding.Comment))
+		}
+		fmt.Println()
+	}
 }
