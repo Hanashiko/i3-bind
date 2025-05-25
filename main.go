@@ -92,8 +92,20 @@ func main() {
 		Run: listBindings,
 	}
 
+	var findCmd = &cobra.Command{
+		Use: "find [search_term]",
+		Short: "Find keybinding by action or key",
+		Long: "Search for keybinding by action or key pattern",
+		Example: `  i3-bind find firefox
+  i3-bind finx exec
+  i3-bind find mod4+shift
+  i3-bind find '$mod+return'`,
+		Args: cobra.ExactArgs(1),
+		Run: findBindings,
+	}
 
-	rootCmd.AddCommand(addCmd, removeCmd, listCmd)
+
+	rootCmd.AddCommand(addCmd, removeCmd, listCmd, findCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -270,5 +282,42 @@ func listBindings(cmd *cobra.Command, args []string) {
 			fmt.Printf(" %s", commentColor.Sprintf("# %s",binding.Comment))
 		}
 		fmt.Println()
+	}
+}
+
+func findBindings(cmd *cobra.Command, args []string) {
+	searchTerm := args[0]
+
+	lines, err := readConfig()
+	if err != nil {
+		errorColor.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	bindings := parseBindings(lines)
+	var matches []Binding
+
+	searchLower := strings.ToLower(searchTerm)
+	for _, binding := range bindings {
+		if strings.Contains(strings.ToLower(binding.Key), searchLower) ||
+		   strings.Contains(strings.ToLower(binding.Action), searchLower) ||
+		   strings.Contains(strings.ToLower(binding.Comment), searchLower) {
+			matches = append(matches, binding)
+		}
+	}
+
+	if len(matches) == 0 {
+		fmt.Printf("No keybindings found matching '%s'\n", searchTerm)
+		return
+	}
+
+	fmt.Printf("Found %d keybinding(s) matching '%s':\n\n",len(matches),searchTerm)
+
+	for _, binding := range matches {
+		fmt.Printf("  %s -> %s", keyColor.Sprint(binding.Key), actionColor.Sprint(binding.Action))
+		if binding.Comment != "" {
+			fmt.Printf(" %s", commentColor.Sprintf("# %s", binding.Comment))
+		}
+		fmt.Printf(" %s\n", color.New(color.FgBlack, color.Bold).Sprintf("(line %d)", binding.Line))
 	}
 }
