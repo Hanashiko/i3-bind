@@ -362,7 +362,7 @@ func commentBinding(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	bindRegex := regexp.MustCompile(`^\s*bindsym\s+` + regexp.QuoteMeta(key) + `\s+(.+?)(?:\s*#.*)?$`)
+	bindRegex := regexp.MustCompile(`(?i)^\s*bindsym\s+` + regexp.QuoteMeta(key) + `\s+(.+?)(?:\s*#.*)?$`)
 
 	for i, line := range lines {
 		if bindRegex.MatchString(line) {
