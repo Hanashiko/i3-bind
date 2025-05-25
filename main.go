@@ -183,6 +183,10 @@ func parseBindings(lines []string) []Binding {
 	return bindings
 }
 
+func insertLine(lines []string, index int, newLine string) []string {
+	return append(lines[:index], append([]string{newLine}, lines[index:]...)...)
+}
+
 func addBinding(cmd *cobra.Command, args []string) {
 	key := args[0]
 	action := strings.Join(args[1:], " ")
@@ -362,11 +366,17 @@ func commentBinding(cmd *cobra.Command, args []string) {
 
 	for i, line := range lines {
 		if bindRegex.MatchString(line) {
-			matches := bindRegex.FindStringSubmatch(line)
-			if matches != nil {
-				lines[i] = fmt.Sprintf("bindsym %s %s # %s", key, matches[1], comment)
-				break
+			if i > 0 {
+				prevLine := strings.TrimSpace(lines[i-1])
+				if strings.HasPrefix(prevLine, "#") {
+					lines[i-1] = "# " + comment
+				} else {
+					lines = insertLine(lines, i, "# " + comment)
+				}
+			} else {
+				lines = insertLine(lines, i, "# "+comment)
 			}
+			break
 		}
 	}
 
