@@ -1,18 +1,18 @@
 package main
 
 import (
-	"bufio"
+	// "bufio"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
+	// "os/exec"
 	"path/filepath"
 	"regexp"
-	"sort"
-	"strconv"
+	// "sort"
+	// "strconv"
 	"strings"
-	"syscall"
+	// "syscall"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -75,7 +75,18 @@ func main() {
 		Run: addBinding,
 	}
 
-	rootCmd.AddCommand(addCmd)
+	var removeCmd = &cobra.Command{
+		Use: "remove [key]",
+		Short: "Remove a keybinding",
+		Long: "Remove a keybinding from the i3 config file",
+		Example: `  i3-bind remove mod4+q
+  i3-bind remove mod4+Enter`,
+		Args: cobra.ExactArgs(1),
+		Run: removeBinding,
+	}
+
+
+	rootCmd.AddCommand(addCmd, removeCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -170,4 +181,47 @@ func addBinding(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 	successColor.Printf("✓ Added keybinding: %s -> %s\n", keyColor.Sprint(key), actionColor.Sprint(action))
+}
+
+func removeBinding(cmd *cobra.Command, args []string) {
+	key := args[0]
+
+	lines, err := readConfig()
+	if err != nil {
+		errorColor.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	bindings := parseBindings(lines)
+	found := false
+	var removedBinding Binding
+
+	for _, binding := range bindings {
+		if binding.Key == key {
+			found = true
+			removedBinding = binding
+			break
+		}
+	}
+
+	if !found {
+		errorColor.Printf("Error: Keybinding %s not found\n", key)
+		os.Exit(1)
+	}
+
+	newLines := make([]string, 0, len(lines)-1)
+	bindRegex := regexp.MustCompile(`^\s*bindsym\s+` + regexp.QuoteMeta(key) + `\s+`)
+
+	for _, line := range lines {
+		if !bindRegex.MatchString(line) {
+			newLines = append(newLines, line)
+		}
+	}
+
+	if err := writeConfig(newLines); err != nil {
+		errorColor.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	successColor.Printf("✓ Removed keybinding: %s -> %s\n", keyColor.Sprint(removedBinding.Key), actionColor.Sprint(removedBinding.Action))
 }
