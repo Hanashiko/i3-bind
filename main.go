@@ -345,12 +345,10 @@ func commentBinding(cmd *cobra.Command, args []string) {
 
 	bindings := parseBindings(lines)
 	found := false
-	// var targetBinding Binding
 
 	for _, binding := range bindings {
-		if binding.Key == key {
+		if strings.EqualFold(binding.Key, key) {
 			found = true
-			// targetBinding = binding
 			break
 		}
 	}
