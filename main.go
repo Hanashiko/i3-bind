@@ -104,8 +104,19 @@ func main() {
 		Run: findBindings,
 	}
 
+	var commentCmd = &cobra.Command{
+		Use: "comment [key] [comment]",
+		Short: "Add or update comment for a keybinding",
+		Long: "Add or update a comment for an existing keybinding",
+		Example: `  i3-bind comment mod4+r "restart i3"
+  i3-bind comment mod4+shift+3 "exit i3"
+  i3-bind comment "$mod+return" "run terminal"`,
+		Args: cobra.ExactArgs(2),
+		Run: commentBinding,
+	}
 
-	rootCmd.AddCommand(addCmd, removeCmd, listCmd, findCmd)
+
+	rootCmd.AddCommand(addCmd, removeCmd, listCmd, findCmd, commentCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -320,4 +331,50 @@ func findBindings(cmd *cobra.Command, args []string) {
 		}
 		fmt.Printf(" %s\n", color.New(color.FgBlack, color.Bold).Sprintf("(line %d)", binding.Line))
 	}
+}
+
+func commentBinding(cmd *cobra.Command, args []string) {
+	key := args[0]
+	comment := args[1]
+
+	lines, err := readConfig()
+	if err != nil {
+		errorColor.Printf("Error: %v\n",err)
+		os.Exit(1)
+	}
+
+	bindings := parseBindings(lines)
+	found := false
+	// var targetBinding Binding
+
+	for _, binding := range bindings {
+		if binding.Key == key {
+			found = true
+			// targetBinding = binding
+			break
+		}
+	}
+
+	if !found {
+		errorColor.Printf("Error: Keybinding %s not found\n", key)
+		os.Exit(1)
+	}
+
+	bindRegex := regexp.MustCompile(`^\s*bindsym\s+` + regexp.QuoteMeta(key) + `\s+(.+?)(?:\s*#.*)?$`)
+
+	for i, line := range lines {
+		if bindRegex.MatchString(line) {
+			matches := bindRegex.FindStringSubmatch(line)
+			if matches != nil {
+				lines[i] = fmt.Sprintf("bindsym %s %s # %s", key, matches[1], comment)
+				break
+			}
+		}
+	}
+
+	if err := writeConfig(lines); err != nil {
+		errorColor.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+	successColor.Printf("✓ Added comment to keybinding: %s # %s\n",keyColor.Sprint(key), commentColor.Sprint(comment))
 }
