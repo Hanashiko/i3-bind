@@ -1,18 +1,18 @@
 package main
 
 import (
-	// "bufio"
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
-	// "os/exec"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	// "strconv"
 	"strings"
-	// "syscall"
+	"syscall"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -115,8 +115,15 @@ func main() {
 		Run: commentBinding,
 	}
 
+	var interactiveCmd = &cobra.Command{
+		Use: "interactive",
+		Short: "Launch interactive TUI mode",
+		Long: "Launch an interactive terminal user interface for managing keybindings",
+		Aliases: []string{"tui", "menu"},
+		Run: interactiveMode,
+	}
 
-	rootCmd.AddCommand(addCmd, removeCmd, listCmd, findCmd, commentCmd)
+	rootCmd.AddCommand(addCmd, removeCmd, listCmd, findCmd, commentCmd, interactiveCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -390,4 +397,116 @@ func commentBinding(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 	successColor.Printf("✓ Added comment to keybinding: %s # %s\n",keyColor.Sprint(key), commentColor.Sprint(comment))
+}
+
+func interactiveMode(cmd *cobra.Command, args []string){
+	if _, err := exec.LookPath("fzf"); err != nil {
+		fmt.Println("Interactive mode requires `fzf` to be installed")
+		fmt.Println("Install it with: sudo pacman -S fzf # or your package manager")
+		os.Exit(1)
+	}
+
+	lines, err := readConfig()
+	if err != nil {
+		errorColor.Printf("Error: %v\n",err)
+		os.Exit(1)
+	}
+
+	bindings := parseBindings(lines)
+	if len(bindings) == 0 {
+		fmt.Println("No keybindings found in config file")
+		return
+	}
+
+	var fzfLines []string
+	for _, binding := range bindings {
+		line := fmt.Sprintf("%s\t%s\t%s", binding.Key, binding.Action, binding.Comment)
+		// if binding.Comment != "" {
+		// 	line += fmt.Sprintf(" # %s",binding.Comment)
+		// }
+		fzfLines = append(fzfLines, line)
+	}
+
+	fzfCmd := exec.Command("fzf",
+		"--header=i3-bind: Select a keybindings to manage (Ctrl+C to exit)",
+		// "--preview=echo 'Key: {1}' && echo 'Action: {3..}' | cut -d'#' -f1 | xargs echo 'Action:' && echo {3..} | grep -o '#.*' | sed 's/^# */Comment: /'",
+		"--preview=echo 'Key: {1}' && echo 'Action: {2}' && echo 'Comment: {3}'",
+		"--preview-window=up:3",
+		"--delimiter=\t",
+		"--with-nth=1,2",
+		// "--bind=enter:accept",
+		// "--height=40%",
+		)
+
+	fzfCmd.Stdin = strings.NewReader(strings.Join(fzfLines, "\n"))
+	fzfCmd.Stderr = os.Stderr
+
+	output, err := fzfCmd.Output()
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				if status.ExitStatus() == 130 { // Ctrl+C
+					return
+				}
+			}
+		}
+		fmt.Printf("fzf error: %v\n", err)
+		return
+	}
+
+	selected := strings.TrimSpace(string(output))
+	if selected == "" {
+		return
+	}
+
+	parts := strings.SplitN(selected, " -> ", 2)
+	if len(parts) < 2 {
+		fmt.Println("Error parsing selected line")
+		return
+	}
+
+	selectedKey := parts[0]
+
+	fmt.Printf("\nSelected keybinding: %s\n", keyColor.Sprint(selectedKey))
+	fmt.Println("\nWhat would you like to do?")
+	fmt.Println("1. Remove this keybinding")
+	fmt.Println("2. Add/Update comment")
+	fmt.Println("3. Show details")
+	fmt.Println("4. Cancel")
+
+	fmt.Print("\nEnter your choice (1-4): ")
+	reader := bufio.NewReader(os.Stdin)
+	choice, _ := reader.ReadString('\n')
+	choice = strings.TrimSpace(choice)
+
+	switch choice {
+	case "1":
+		removeBinding(cmd, []string{selectedKey})
+	case "2":
+		fmt.Print("Enter comment: ")
+		comment, _ := reader.ReadString('\n')
+		comment = strings.TrimSpace(comment)
+		if comment != "" {
+			commentBinding(cmd, []string{selectedKey, comment})
+		}
+	case "3":
+		for _, binding := range bindings {
+			if binding.Key == selectedKey {
+				fmt.Printf("\nKeybinding Details:\n")
+				fmt.Printf("  Key: %s\n", keyColor.Sprint(binding.Key))
+				fmt.Printf("  Action: %s\n", actionColor.Sprint(binding.Action))
+				if binding.Comment != "" {
+					fmt.Printf("  Comment: %s\n", commentColor.Sprint(binding.Comment))
+				}
+				fmt.Printf("  Line: %d\n", binding.Line)
+				fmt.Printf("  Raw: %s\n", binding.Raw)
+				break
+			}
+		}
+	case "4":
+		fmt.Println("Cancelled")
+	default:
+		fmt.Println("Invalid choice")
+	}
+
 }
