@@ -400,6 +400,14 @@ func commentBinding(cmd *cobra.Command, args []string) {
 }
 
 func interactiveMode(cmd *cobra.Command, args []string){
+
+	escapePreview := func(s string) string {
+		s = strings.ReplaceAll(s, `\`, `\\`)
+		s = strings.ReplaceAll(s, `"`, `\"`)
+		s = strings.ReplaceAll(s, "$", `\$`)
+		return s
+	}
+
 	if _, err := exec.LookPath("fzf"); err != nil {
 		fmt.Println("Interactive mode requires `fzf` to be installed")
 		fmt.Println("Install it with: sudo pacman -S fzf # or your package manager")
@@ -420,28 +428,17 @@ func interactiveMode(cmd *cobra.Command, args []string){
 
 	var fzfLines []string
 	for _, binding := range bindings {
-		// line := fmt.Sprintf("%s\t%s\t%s", binding.Key, binding.Action, binding.Comment)
-
-		// line := fmt.Sprintf("%s -> %s", strings.ReplaceAll(binding.Key, "$", "\\$"), binding.Action)
 
 		displayKey := binding.Key
-		// escapedKey := strings.ReplaceAll(binding.Key, "$", "\\$")
-		escapePreview := func(s string) string {
-			s = strings.ReplaceAll(s, `\`, `\\`)
-			s = strings.ReplaceAll(s, `"`, `\"`)
-			s = strings.ReplaceAll(s, "$", `\$`)
-			return s
-		}
+		action := binding.Action
+		comment := binding.Comment
+		
 		escapedKey := escapePreview(binding.Key)
 		escapedAction := escapePreview(binding.Action)
 		escapedComment := escapePreview(binding.Comment)
-		action := binding.Action
-		// line := fmt.Sprintf("%s -> %s", displayKey, action)
-		// if binding.Comment != "" {
-			// line += fmt.Sprintf(" # %s",binding.Comment)
-		// }
-		comment := binding.Comment
+		
 		line := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s", displayKey, action, comment, escapedKey, escapedAction, escapedComment)
+		
 		fzfLines = append(fzfLines, line)
 	}
 
@@ -450,13 +447,7 @@ func interactiveMode(cmd *cobra.Command, args []string){
 		"--with-nth=1,2",
 		"--delimiter=\t",
 		"--preview", `echo "Key: {4}"; echo "Action: {5}"; if [ -n "{6}" ]; then echo "Comment: {6}"; fi`,
-		// "--preview=sh -c 'echo Key: {1}; echo Action: {3..} | cut -d\"#\" -f1 | xargs echo Action:; echo {3..} | grep -o \"#.*\" | sed \"s/^# */Comment: /\"'",
-		// "--preview=echo 'Key: {1}' && echo 'Action: {3..}' | cut -d'#' -f1 | xargs echo 'Action:' && echo {3..} | grep -o '#.*' | sed 's/^# */Comment: /'",
-		// "--preview=echo 'Key: {1}' && echo 'Action: {2}' && echo 'Comment: {3}'",
-		// "--preview=sh -c 'echo Key: {1}; echo Action: {3..} | cut -d\"#\" -f1 | xargs echo Action:; echo {3..} | grep -o \"#.*\" | sed \"s/^# */Comment: /\"'",
 		"--preview-window=up:3",
-		// "--delimiter=\t",
-		// "--with-nth=1,2",
 		"--bind=enter:accept",
 		"--height=40%",
 		)
