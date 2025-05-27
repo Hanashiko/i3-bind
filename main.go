@@ -420,22 +420,30 @@ func interactiveMode(cmd *cobra.Command, args []string){
 
 	var fzfLines []string
 	for _, binding := range bindings {
-		line := fmt.Sprintf("%s\t%s\t%s", binding.Key, binding.Action, binding.Comment)
-		// if binding.Comment != "" {
-		// 	line += fmt.Sprintf(" # %s",binding.Comment)
-		// }
+		// line := fmt.Sprintf("%s\t%s\t%s", binding.Key, binding.Action, binding.Comment)
+
+		// line := fmt.Sprintf("%s -> %s", strings.ReplaceAll(binding.Key, "$", "\\$"), binding.Action)
+
+		displayKey := binding.Key
+		action := binding.Action
+		line := fmt.Sprintf("%s -> %s", displayKey, action)
+		if binding.Comment != "" {
+			line += fmt.Sprintf(" # %s",binding.Comment)
+		}
 		fzfLines = append(fzfLines, line)
 	}
 
 	fzfCmd := exec.Command("fzf",
 		"--header=i3-bind: Select a keybindings to manage (Ctrl+C to exit)",
+		// "--preview=sh -c 'echo Key: {1}; echo Action: {3..} | cut -d\"#\" -f1 | xargs echo Action:; echo {3..} | grep -o \"#.*\" | sed \"s/^# */Comment: /\"'",
 		// "--preview=echo 'Key: {1}' && echo 'Action: {3..}' | cut -d'#' -f1 | xargs echo 'Action:' && echo {3..} | grep -o '#.*' | sed 's/^# */Comment: /'",
-		"--preview=echo 'Key: {1}' && echo 'Action: {2}' && echo 'Comment: {3}'",
+		// "--preview=echo 'Key: {1}' && echo 'Action: {2}' && echo 'Comment: {3}'",
+		"--preview=sh -c 'echo Key: {1}; echo Action: {3..} | cut -d\"#\" -f1 | xargs echo Action:; echo {3..} | grep -o \"#.*\" | sed \"s/^# */Comment: /\"'",
 		"--preview-window=up:3",
-		"--delimiter=\t",
-		"--with-nth=1,2",
-		// "--bind=enter:accept",
-		// "--height=40%",
+		// "--delimiter=\t",
+		// "--with-nth=1,2",
+		"--bind=enter:accept",
+		"--height=40%",
 		)
 
 	fzfCmd.Stdin = strings.NewReader(strings.Join(fzfLines, "\n"))
