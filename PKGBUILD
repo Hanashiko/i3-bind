@@ -1,3 +1,4 @@
+# Maintainer: Hanashiko hlichisper@gmail.com
 pkgname=i3-bind
 pkgver=1.0.0
 pkgrel=1
